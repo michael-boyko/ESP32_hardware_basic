@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include "driver/gpio.h"
 #include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"
@@ -6,7 +7,7 @@
 #include "esp_spi_flash.h"
 #include <string.h>
 #include <unistd.h>
-
+//6x8.h
 uint8_t arr_symbols[] = {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // sp
         0x00, 0x00, 0x00, 0x2f, 0x00, 0x00, // !
@@ -135,7 +136,12 @@ static int *get_temperature_and_humidity() {
     int check = 0;
     int *arr_num = malloc(sizeof(int) * 5);
 
-    bzero(&arr_num, sizeof(arr_num));
+    bzero(arr_num, sizeof(int) * 5);
+    // for (int i = 0; i < 5; ++i)
+    // {
+    //     arr_num[i] = 0;
+    // }
+
     gpio_set_direction(PIN, GPIO_MODE_OUTPUT);
     gpio_set_level(PIN, 0);
     ets_delay_us(20000);
@@ -167,8 +173,10 @@ static int *get_temperature_and_humidity() {
             byte++;
     }
     if (arr_num[4] != ((arr_num[0] + arr_num[1] + arr_num[2] + arr_num[3]))) {
-        printf("Something wrong\n");
+        write(2, "Something wrong\n", 16);
     }
+
+
     return arr_num;
 }
 
@@ -272,7 +280,7 @@ static uint8_t *get_code_symbol(int num_char, uint8_t *arr_symbols) {
 static void write_str(char *str, uint8_t *arr_symbols, sh1106_t *display) {
     uint8_t *symbol = NULL;
     int start_point = (128 - strlen(str) * 6) / 2;
-    for (int j = 0; str[j] != '\n'; ++j) {
+    for (int j = 0; str[j] != '\0'; ++j) {
         symbol = get_code_symbol(str[j], arr_symbols);
         for (int i = 0; i < 6; ++i) {
             display->pages[3][start_point + (j * 6) + i] = symbol[i];
@@ -285,12 +293,15 @@ void app_main() {
     sh1106_t display;
     display.addr = I2C_ADDR;
     display.port = I2C_PORT;
-    char temperature[] = "Temperature: C\n";
-    char humidity[] = "Humidity: %\n";
+    char *temperature = malloc(sizeof(char) * strlen("Temperature: 00C"));
+//    char humidity[] = "Humidity: %\n";
+    char *tem = malloc(sizeof(char) * 3);
     int *data_temper_humid = NULL;
     int t = 0;
     int h = 0;
 
+    memset(temperature, '\0', strlen("Temperature: 00C"));
+    memset(tem, '\0', 3);
     set_up_dht11();
     on_oled_power();
     init_i2c();
@@ -299,9 +310,17 @@ void app_main() {
     while (true) {
         data_temper_humid = get_temperature_and_humidity();
         if (data_temper_humid[2] != t || data_temper_humid[0] != h) {
+            tem = itoa(data_temper_humid[2], tem, 10);
+            temperature = strcat(strcat(strcat(temperature, "Temperature: "), tem), "C");
             write_str(temperature, arr_symbols, &display);
+            memset(temperature, '\0', strlen("Temperature: 00C"));
             sh1106_write_page(&display, 4);
+            t = data_temper_humid[2];
+            h = data_temper_humid[0];
         }
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        // printf("%d\n", data_temper_humid[2]);
+        free(data_temper_humid);
+
+        vTaskDelay(2100 / portTICK_PERIOD_MS);
     }
 }
