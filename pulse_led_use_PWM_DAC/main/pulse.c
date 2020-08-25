@@ -55,7 +55,7 @@ void pulse_led_use_PWM() {
 
 void app_main() {
 	for (int i = 0; i < 10; ++i) {
-		xTaskCreate (pulse_led_use_PWM, "pulse_led_use_PWM" , 2048 , NULL , 1 , NULL );
-		xTaskCreate (pulse_led_use_DAC, "pulse_led_use_DAC" , 2048 , NULL , 2 , NULL );
+		pulse_led_use_DAC();
+		pulse_led_use_PWM();
 	 } 
 }
