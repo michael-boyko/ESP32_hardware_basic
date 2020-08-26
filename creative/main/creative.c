@@ -5,6 +5,7 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "driver/dac.h"
 #include <string.h>
 #include <unistd.h>
 //6x8.h
@@ -115,6 +116,22 @@ const int MAX_BYTE = 5;
 #define I2C_PORT SH1106_DEFAULT_PORT
 #define EN_OLED_PIN GPIO_NUM_32
 
+#define GPIO_LED1 27
+#define GPIO_LED2 26
+#define GPIO_BUTTON1 39
+#define GPIO_BUTTON2 18
+#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<GPIO_LED1) | (1ULL<<GPIO_LED2))
+#define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_BUTTON1) | (1ULL<<GPIO_BUTTON2))
+#define ESP_INTR_FLAG_DEFAULT 0
+
+static xQueueHandle gpio_evt_queue = NULL;
+
+static void IRAM_ATTR gpio_isr_handler(void* arg) {
+    uint32_t gpio_num = (uint32_t) arg;
+
+    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+}
+
 static int get_level(int time, bool status) {
  int sec = 0;
  while (gpio_get_level(PIN) == status) {
@@ -186,6 +203,7 @@ typedef struct {
     uint16_t changes;       // page change bit to optimize writes
     uint8_t pages[8][128]; // page buffer
 } sh1106_t;
+
 
 void on_oled_power() {
     gpio_set_direction(EN_OLED_PIN, GPIO_MODE_OUTPUT);
@@ -289,38 +307,127 @@ static void write_str(char *str, uint8_t *arr_symbols, sh1106_t *display) {
     }
 }
 
-void app_main() {
+static void make_beep() {
+    int a = 100;
+
+    dac_output_enable(DAC_CHANNEL_1);
+    while (a > 0) {
+        for (int i = 0; i < 225; i+=30) {
+            dac_output_voltage(DAC_CHANNEL_1, i);
+            ets_delay_us(100);
+        }
+        a--;
+    }   
+}
+
+static void display_t_h(_Bool *screen) {
+    uint32_t io_num;
     sh1106_t display;
     display.addr = I2C_ADDR;
     display.port = I2C_PORT;
+    char temperature[] = "Temperature: 00C";
+    char humidity[] = "Humidity: 00%";
+    sh1106_fill(&display, 0);
+
+    while (true) {
+        if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
+            *screen = io_num == 39 ? true : false;
+            // make_beep();
+            if (*screen == true) {
+                // memset(temperature, '\0', strlen("Temperature: 00C"));
+                // temperature = strcat(strcat(strcat(temperature, "Temperature: "), tem), "C");
+                sh1106_fill(&display, 0);
+                write_str(temperature, arr_symbols, &display);
+                sh1106_write_page(&display, 4);
+            }
+            else {
+                // memset(temperature, '\0', strlen("Temperature: 00C"));
+                // temperature = strcat(strcat(strcat(temperature, "Humidity: "), tem), "%");
+                sh1106_fill(&display, 0);
+                write_str(humidity, arr_symbols, &display);
+                sh1106_write_page(&display, 4);
+            }
+        }  
+    }
+}
+
+void app_main() {
+///////////////////////////////////
     char *temperature = malloc(sizeof(char) * strlen("Temperature: 00C"));
-//    char humidity[] = "Humidity: %\n";
     char *tem = malloc(sizeof(char) * 3);
     int *data_temper_humid = NULL;
     int t = 0;
     int h = 0;
+    _Bool screen = true;
+    on_oled_power();
+    init_i2c(); //important
 
     memset(temperature, '\0', strlen("Temperature: 00C"));
     memset(tem, '\0', 3);
-    set_up_dht11();
-    on_oled_power();
-    init_i2c();
+////////////////////////////////////
+    // sh1106_t display;
+    sh1106_t display;
+    display.addr = I2C_ADDR;
+    display.port = I2C_PORT;    
+
     sh1106_init(&display);
     sh1106_fill(&display, 0);
-    while (true) {
+////////////////////////////////////
+
+    gpio_config_t io_conf;
+
+    io_conf.intr_type = GPIO_PIN_INTR_POSEDGE;
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    io_conf.mode = GPIO_MODE_INPUT;
+    gpio_config(&io_conf);
+////////////////////////////////////
+    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+
+    set_up_dht11();
+    
+    
+    
+
+    xTaskCreate(display_t_h, "display_t_h", 2048, &screen, 10, NULL);
+
+    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    gpio_isr_handler_add(GPIO_BUTTON1, gpio_isr_handler, (void*) GPIO_BUTTON1);
+    gpio_isr_handler_add(GPIO_BUTTON2, gpio_isr_handler, (void*) GPIO_BUTTON2);
+
+    // uint32_t io_num;
+
+    
+    // display_t_h(&display);
+    while (true){
         data_temper_humid = get_temperature_and_humidity();
         if (data_temper_humid[2] != t || data_temper_humid[0] != h) {
+         if (screen == true){
+            memset(temperature, '\0', strlen("Temperature: 00C"));
+            memset(tem, '\0', 3);
             tem = itoa(data_temper_humid[2], tem, 10);
             temperature = strcat(strcat(strcat(temperature, "Temperature: "), tem), "C");
+            sh1106_fill(&display, 0);
             write_str(temperature, arr_symbols, &display);
-            memset(temperature, '\0', strlen("Temperature: 00C"));
             sh1106_write_page(&display, 4);
             t = data_temper_humid[2];
             h = data_temper_humid[0];
         }
-        // printf("%d\n", data_temper_humid[2]);
+        else {
+            memset(temperature, '\0', strlen("Temperature: 00C"));
+            memset(tem, '\0', 3);
+            tem = itoa(data_temper_humid[0], tem, 10);
+            temperature = strcat(strcat(strcat(temperature, "Humidity: "), tem), "%");
+            sh1106_fill(&display, 0);
+            write_str(temperature, arr_symbols, &display);
+            sh1106_write_page(&display, 4);
+            t = data_temper_humid[2];
+            h = data_temper_humid[0];
+        }
+}
+
         free(data_temper_humid);
 
         vTaskDelay(2100 / portTICK_PERIOD_MS);
     }
+
 }
