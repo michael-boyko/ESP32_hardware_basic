@@ -4,7 +4,7 @@
 #include "driver/gpio.h"
 
 #define GPIO_LED1 27
-#define GPIO_LED2 33
+#define GPIO_LED2 26
 #define GPIO_BUTTON1 39
 #define GPIO_BUTTON2 18
 #define GPIO_OUTPUT_PIN_SEL  ((1ULL<<GPIO_LED1) | (1ULL<<GPIO_LED2))
@@ -21,13 +21,20 @@ static void IRAM_ATTR gpio_isr_handler(void* arg) {
 
 static void gpio_task_example(void* arg) {
     uint32_t io_num;
-    _Bool on_off = false;
+    _Bool on_off1 = false;
+    _Bool on_off2 = false;
 
     for(;;) {
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            gpio_set_level(io_num == 39 ? 33 : 27, on_off == false ? 1 : 0);
-            on_off = (on_off == false ? true : false);
-            vTaskDelay(300 / portTICK_RATE_MS);
+            gpio_set_level(io_num == GPIO_BUTTON1 ? 26 : 27, (io_num == 39 ? on_off1 : on_off2) == false ? 1 : 0);
+            if (io_num == 39)
+            {
+                on_off1 = (on_off1 == false ? true : false);    /* code */
+            }
+            else {
+                on_off2 = (on_off2 == false ? true : false);
+            }
+            // vTaskDelay(100 / portTICK_RATE_MS);
         }
     }
 }
