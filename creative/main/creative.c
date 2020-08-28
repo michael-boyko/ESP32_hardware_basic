@@ -1,15 +1,13 @@
-#include <creative.h>
-
-int temperature = 0;
-int humidity = 0;
+#include "creative.h"
 
 void app_main() {
+	temperature = 0;
+	humidity = 0;
     power_on_dht11();
-    get_temperature_and_humidity();
+    xTaskCreate(get_temperature_and_humidity, "get_temperature_and_humidity", 4088, NULL, 10, NULL);
+    xTaskCreate(change_screen, "change_screen", 4088, NULL, 11, NULL);
 }
 
-// const int PIN = 4;
-// const int MAX_BYTE = 5;
 
 // #define SH1106_DEFAULT_ADDR 0x3C      // default I2C address
 // #define SH1106_DEFAULT_PORT I2C_NUM_0 // default I2C interface port
@@ -20,10 +18,6 @@ void app_main() {
 // #define I2C_PORT SH1106_DEFAULT_PORT
 // #define EN_OLED_PIN GPIO_NUM_32
 
-// #define GPIO_LED1 27
-// #define GPIO_LED2 26
-// #define GPIO_BUTTON1 39
-// #define GPIO_BUTTON2 18
 // #define GPIO_OUTPUT_PIN_SEL  ((1ULL<<GPIO_LED1) | (1ULL<<GPIO_LED2))
 // #define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_BUTTON1) | (1ULL<<GPIO_BUTTON2))
 // #define ESP_INTR_FLAG_DEFAULT 0
