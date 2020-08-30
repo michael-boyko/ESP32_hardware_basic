@@ -1,1 +1,1 @@
-idf_component_register(SRCS "creative.c" "get_temperature_and_humidity.c" "get_data_dht11.c" "power_on_dht11.c" "change_screen.c" "creative.h" "font6x8.h" INCLUDE_DIRS ".")
+idf_component_register(SRCS "creative.c" "get_temperature_and_humidity.c" "get_data_dht11.c" "power_on_dht11.c" "change_screen.c" "make_beep.c" "power_on_oled.c" "init_i2c.c" "init_display.c" "screen_onto_display.c" "str_in_screen.c" "fill_screen_0_or_1.c" "create_arr.c" "select_screen.c" "update_display.c" "creative.h" "font6x8.h" INCLUDE_DIRS ".")

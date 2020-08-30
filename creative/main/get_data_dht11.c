@@ -13,7 +13,7 @@ static int get_level(int time, bool status) {
 }
 
 static void set_up_dht11(int *check) {
-	gpio_set_direction(GPIO_DHT11, GPIO_MODE_OUTPUT);
+    gpio_set_direction(GPIO_DHT11, GPIO_MODE_OUTPUT);
     gpio_set_level(GPIO_DHT11, 0);
     ets_delay_us(20000);
     gpio_set_level(GPIO_DHT11, 1);
