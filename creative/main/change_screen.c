@@ -23,6 +23,17 @@ static void set_up_button() {
     gpio_isr_handler_add(GPIO_BUTTON2, gpio_isr_handler, (void*) GPIO_BUTTON2);
 }
 
+static void off_on_inter(_Bool on_off) {
+    if (on_off == 1) {
+            gpio_intr_enable(GPIO_BUTTON1);
+            gpio_intr_enable(GPIO_BUTTON2);
+       }
+    else {
+        gpio_intr_disable(GPIO_BUTTON1);
+        gpio_intr_disable(GPIO_BUTTON2);
+    }   
+}
+
 void change_screen(uint8_t **screen) {
     uint32_t io_num;
 
@@ -30,12 +41,18 @@ void change_screen(uint8_t **screen) {
     while(true) {
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
             if (io_num == 39) {
+                off_on_inter(0);
                 make_beep_sound();
                 pick_screen = true;
+                vTaskDelay(20 / portTICK_PERIOD_MS);
+                off_on_inter(1); 
             }
             else {
+                off_on_inter(0);
                 make_beep_sound();
                 pick_screen = false;
+                vTaskDelay(20 / portTICK_PERIOD_MS);
+                off_on_inter(1); 
             }
             select_screen(screen);
         }

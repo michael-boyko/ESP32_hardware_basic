@@ -14,6 +14,8 @@ void init_display() {
 
     i2c_master_write_byte(cmd, 0x20, true);
     i2c_master_write_byte(cmd, 0x00, true);
+    // i2c_master_write_byte(cmd, 0xC0, true); // need delete
+    // i2c_master_write_byte(cmd, 0xA0, true); // need delete
 
     i2c_master_write_byte(cmd, 0x8D, true); // charge pump
     i2c_master_write_byte(cmd, 0x14, true);

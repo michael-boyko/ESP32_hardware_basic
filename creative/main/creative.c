@@ -12,6 +12,6 @@ void app_main() {
     // str_in_screen(str, screen);
     screen_onto_display(screen);
     xTaskCreate(get_temperature_and_humidity, "get_temperature_and_humidity", 4088, NULL, 10, NULL);
-    xTaskCreate(change_screen, "change_screen", 4088, screen, 11, NULL);
-    xTaskCreate(update_display, "update_display", 4088, screen, 12, NULL);
+    xTaskCreate(change_screen, "change_screen", 4096, screen, 11, NULL);
+    xTaskCreate(update_display, "update_display", 4096, screen, 12, NULL);
 }

@@ -10,6 +10,6 @@ void update_display(uint8_t **screen) {
             h = humidity;
             select_screen(screen);
         }
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
