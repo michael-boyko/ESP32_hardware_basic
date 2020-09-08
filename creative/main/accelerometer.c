@@ -1,4 +1,4 @@
-#include "accelerometer.h"
+#include "creative.h"
 
 static void accelerometer_write(spi_device_handle_t spi, uint8_t address, uint8_t value) {
     spi_transaction_t trans = {
@@ -34,25 +34,29 @@ static void init_accelerometer(spi_device_handle_t spi) {
     vTaskDelay(200 / portTICK_PERIOD_MS);
 }
 
-static void read_accelerometer(spi_device_handle_t spi) {
+static void read_accelerometer(spi_device_handle_t spi, uint8_t **screen) {
     int16_t accs[3];
+    _Bool flipped = true;
 
     while (1) {
         read_acceleration(spi, accs);
-        // printf("ax, ay, az: %d, %d, %d\n", (int)accs[0], (int)accs[1], (int)accs[2]);
-        if ((int)accs[2] <= 25 && (int)accs[2] >= 0) {
-            make_beep_sound();
-            led_on_off(true);
+        printf("ax, ay, az: %d, %d, %d\n", (int)accs[0], (int)accs[1], (int)accs[2]);
+        if ((int)accs[1] < -150 && flipped == true) {
+            reinit_display(false);
+            select_screen(screen);
+            flipped = false;
         }
-        else {
-            led_on_off(false);
+        if ((int)accs[1] > 150 && flipped == false) {
+            reinit_display(true);
+            select_screen(screen);
+            flipped = true;
         }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
-void app_main (void) {
-    spi_device_handle_t spi;
+void flippe(uint8_t **screen) {
+     spi_device_handle_t spi;
     spi_bus_config_t buscfg = {
         .miso_io_num = GPIO_MISO,
         .mosi_io_num = GPIO_MOSI,
@@ -71,5 +75,5 @@ void app_main (void) {
     spi_bus_initialize(VSPI_HOST, &buscfg, 0);
     spi_bus_add_device(VSPI_HOST, &devcfg, &spi);
     init_accelerometer(spi);
-    read_accelerometer(spi);
+    read_accelerometer(spi, screen);
 }
